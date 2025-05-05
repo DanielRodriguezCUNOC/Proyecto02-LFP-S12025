@@ -1,20 +1,21 @@
 package org.analizador;
 
+import org.analizador.partelexica.AnalizadorLexico;
 import org.analizador.partelexica.Token;
 import org.analizador.partesintactica.AnalizadorSintactico;
 
 import java.io.StringReader;
+import java.util.ArrayList;
 import java.util.List;
 
 public class App {
     public static void main(String[] args) {
         // Casos de prueba
         String[] pruebas = {
-                "PRINT \"Hola mundo\" END",
-                "$var = 10 + 5 END",
-                "REPEAT 3 INIT PRINT \"Repetición\" END END",
-                "IF TRUE THEN PRINT \"Se ejecuta\" END END",
-                "PRINT $var END"
+                "PRINT $var END",
+                "$var = 10 + 5 END PRINT $var END",
+                "REPEAT 2 INIT PRINT \"Iteración\" END END",
+                "IF TRUE THEN $x = 5 END IF FALSE THEN PRINT \"No visible\" END END"
         };
 
         for (String prueba : pruebas) {
@@ -31,7 +32,7 @@ public class App {
 
             List<Token> tokens = new ArrayList<>();
             Token token;
-            while ((token = lexico.yylex()) != null && !token.type.equals("EOF")) {
+            while ((token = lexico.yylex()) != null && !token.tipo.equals("EOF")) {
                 System.out.println("Token: " + token);
                 tokens.add(token);
             }

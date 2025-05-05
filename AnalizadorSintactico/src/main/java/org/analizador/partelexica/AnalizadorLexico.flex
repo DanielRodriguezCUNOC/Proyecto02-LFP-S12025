@@ -3,29 +3,11 @@
 %unicode
 %line
 %column
-%type Token
+%type org.analizador.partelexica.Token
 %public
 
 %{
-    // Clase Token que usaremos para representar los tokens encontrados
-    public static class Token {
-        public final String lexema;
-        public final String tipo;
-        public final int linea;
-        public final int columna;
-
-        public Token(String lexema, String tipo, int linea, int columna) {
-            this.lexema = lexema;
-            this.tipo = tipo;
-            this.linea = linea;
-            this.columna = columna;
-        }
-
-        @Override
-        public String toString() {
-            return String.format("%s (%s) [%d:%d]", lexema, tipo, linea, columna);
-        }
-    }
+    import org.analizador.partelexica.Token;
 %}
 
 // Definición de patrones

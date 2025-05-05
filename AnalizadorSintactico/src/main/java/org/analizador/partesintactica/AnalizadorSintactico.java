@@ -2,8 +2,12 @@ package org.analizador.partesintactica;
 
 import org.analizador.partelexica.Token;
 
-import java.util.*;
-import java.io.*;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class AnalizadorSintactico {
     // Tabla de símbolos para almacenar identificadores y sus valores
@@ -17,25 +21,28 @@ public class AnalizadorSintactico {
         this.salida = new PrintWriter(new FileWriter(archivoSalida));
     }
 
-    // Método principal para iniciar el análisis
+    //* Método principal para iniciar el análisis
     public void analizar() {
         while (posicionActual < tokens.size()) {
             Token tokenActual = tokens.get(posicionActual);
-
-            if (tokenActual.tipo.equals("PRINT")) {
-                estructuraPRINT();
-            } else if (tokenActual.tipo.equals("REPEAT")) {
-                estructuraREPEAT();
-            } else if (tokenActual.tipo.equals("IF")) {
-                estructuraCONDICIONAL();
-            } else if (tokenActual.tipo.equals("ID") &&
-                    posicionActual + 1 < tokens.size() &&
-                    tokens.get(posicionActual + 1).tipo.equals("ASIGN")) {
-                estructuraASIGNACION();
-            } else if (!tokenActual.tipo.equals("EOF")) {
-                errorSintactico("Estructura no reconocida", tokenActual);
+            try {
+                if (tokenActual.tipo.equals("PRINT")) {
+                    estructuraPRINT();
+                } else if (tokenActual.tipo.equals("REPEAT")) {
+                    estructuraREPEAT();
+                } else if (tokenActual.tipo.equals("IF")) {
+                    estructuraCONDICIONAL();
+                } else if (tokenActual.tipo.equals("ID") &&
+                        posicionActual + 1 < tokens.size() &&
+                        tokens.get(posicionActual + 1).tipo.equals("ASIGN")) {
+                    estructuraASIGNACION();
+                } else if (!tokenActual.tipo.equals("EOF")) {
+                    errorSintactico("Estructura no reconocida", tokenActual);
+                }
+            } catch (Exception e) {
+                errorSintactico("Error en la estructura: " + e.getMessage(), tokenActual);
+                posicionActual++;
             }
-
             posicionActual++;
         }
 
@@ -219,6 +226,7 @@ public class AnalizadorSintactico {
 
         // Guardar en tabla de símbolos
         tablaSimbolos.put(id.lexema, valor);
+        System.out.println("Asignación: " + id.lexema + " = " + valor);
     }
 
     // Evaluar expresiones aritméticas (recursivo para manejar paréntesis)
