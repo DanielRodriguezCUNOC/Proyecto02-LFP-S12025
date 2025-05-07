@@ -52,7 +52,7 @@ public class Parser {
     }
 
     private void manejarTerminal(String terminal) throws Exception {
-        if (terminal.equals(tokenActual.tipo) || (terminal.equals("PALABRA") && terminal.equals(tokenActual.tipo))) {
+        if (terminal.equals(tokenActual.tipo)) {
             tokenActual = obtenerSiguienteToken();
         } else {
             throw new ErrorSintactico(tokenActual);
@@ -158,7 +158,7 @@ public class Parser {
                 break;
 
             case "EXPR'":
-                if (esOperadorAditivo()) {
+                if (tokenActual.tipo.equals("SUMA") || tokenActual.tipo.equals("RESTA")) {
                     pila.push("EXPR'");
                     pila.push("TERM");
                     pila.push("OP_ADD");
@@ -175,10 +175,10 @@ public class Parser {
                 pila.push("TERM'");
                 break;
             case "TERM'":
-                if(esOperadorMultiplicativo()){
+                if(tokenActual.tipo.equals("MULT") || tokenActual.tipo.equals("DIV") || tokenActual.tipo.equals("POT")){
                     pila.push("TERM'");
                     pila.push("FACTOR");
-                    pila.push("OP_MULT");
+                    pila.push("OP_MUL");
                 }else{
                     pila.push("ε");
                 }
@@ -192,35 +192,37 @@ public class Parser {
                 pila.push("ε");
                 break;
 
-                case "FACTOR":
-                    switch (tokenActual.tipo){
-                        case "ENTERO":
-                        case "ID":
-                            pila.push(tokenActual.tipo);
-                            break;
-                        case"PAR_IZQ":
-                            pila.push("PAR_DER");
-                            pila.push("EXPR");
-                            pila.push("PAR_IZQ");
-                            break;
-
-                        default:
-                            throw new ErrorSintactico(tokenActual);
-                    }
-                    break;
-
-                    case"OP_ADD":
-                        if(tokenActual.lexema.equals("+") || tokenActual.lexema.equals("-")){
-                            pila.push("OPERADOR");
-                        }else{
-                            throw new ErrorSintactico(tokenActual);
-                        }
+            case "FACTOR":
+                switch (tokenActual.tipo){
+                    case "ENTERO":
+                    case "ID":
+                        pila.push(tokenActual.tipo);
                         break;
+                    case"PAR_IZQ":
+                        pila.push("PAR_DER");
+                        pila.push("EXPR");
+                        pila.push("PAR_IZQ");
+                        break;
+                    default:
+                        throw new ErrorSintactico(tokenActual);
+                }
+                break;
+
+            case "OP_ADD":
+                if (tokenActual.tipo.equals("SUMA") || tokenActual.tipo.equals("RESTA")) {
+                    //* Empujamos el terminal
+                    pila.push(tokenActual.tipo);
+                } else {
+                    throw new ErrorSintactico(tokenActual);
+                }
+                break;
 
             case "OP_MUL":
-                if(tokenActual.lexema.equals("*") || tokenActual.lexema.equals("/") || tokenActual.lexema.equals("^")){
-                    pila.push("OPERADOR");
-                }else{
+                if (tokenActual.tipo.equals("MULT") || tokenActual.tipo.equals("DIV") ||
+                        tokenActual.lexema.equals("POT")) {
+                    //* Empujamos el terminal
+                    pila.push(tokenActual.tipo);
+                } else {
                     throw new ErrorSintactico(tokenActual);
                 }
                 break;
@@ -260,9 +262,9 @@ public class Parser {
                simbolo.equals("IF") || simbolo.equals("THEN") || 
                simbolo.equals("ID") || simbolo.equals("ENTERO") || 
                simbolo.equals("LITERAL") || simbolo.equals("IGUAL") ||
-                simbolo.equals("PAR_IZQ") ||
-                simbolo.equals("PAR_DER") ||
-                simbolo.equals("OPERADOR");
+                simbolo.equals("PAR_IZQ") || simbolo.equals("PAR_DER") ||
+                simbolo.equals("SUMA") || simbolo.equals("RESTA") || simbolo.equals("MULT") ||
+                simbolo.equals("DIV") || simbolo.equals("POT");
     }
 
     private void logDebug(String mensaje) {
@@ -276,24 +278,10 @@ public class Parser {
         }
     }
 
-    private boolean esOperadorAditivo() {
-        return tokenActual.lexema.equals("+") || tokenActual.lexema.equals("-");
-    }
 
-    private boolean esOperadorMultiplicativo() {
-        return tokenActual.lexema.equals("*") || tokenActual.lexema.equals("/");
+    private boolean esOperador(){
+        return tokenActual.lexema.equals("SUMA") || tokenActual.lexema.equals("RESTA") ||
+                tokenActual.lexema.equals("MULT") || tokenActual.lexema.equals("DIV") ||
+                tokenActual.lexema.equals("POT");
     }
-
-   /* public static void main(String[] args) {
-        try {
-            Lexer lexer = new Lexer(new FileReader("entrada.txt"));
-            Parser parser = new Parser(lexer, "salida.txt");
-            parser.analizar();
-            System.out.println("Análisis completado exitosamente!");
-        } catch (ErrorSintactico e) {
-            System.err.println(e.getMessage());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }*/
 }
