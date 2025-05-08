@@ -1,4 +1,3 @@
-
 %%
 %class Lexer
 %unicode
@@ -37,29 +36,23 @@ PAR_DER = ")"
 PALABRAS = "PRINT"|"END"|"REPEAT"|"INIT"|"IF"|"TRUE"|"FALSE"|"THEN"
 
 %%
-// Operadores individuales
+// Operadores individuales (prioridad alta)
 "+"                   { return new Token("SUMA", yytext(), yyline+1, yycolumn+1); }
 "-"                   { return new Token("RESTA", yytext(), yyline+1, yycolumn+1); }
 "*"                   { return new Token("MULT", yytext(), yyline+1, yycolumn+1); }
 "/"                   { return new Token("DIV", yytext(), yyline+1, yycolumn+1); }
 "^"                   { return new Token("POT", yytext(), yyline+1, yycolumn+1); }
 
-{SIGNO}?{DIGITO}+     {
-    if (yytext().length() > 1 || (yytext().charAt(0) != '+' && yytext().charAt(0) != '-')) {
-        return new Token("ENTERO", yytext(), yyline+1, yycolumn+1);
-    } else {
-        throw new Error("Carácter ilegal: " + yytext());
-    }
-}
 {PAR_IZQ}             { return new Token("PAR_IZQ", yytext(), yyline+1, yycolumn+1); }
 {PAR_DER}             { return new Token("PAR_DER", yytext(), yyline+1, yycolumn+1); }
-{PALABRAS}            { return new Token(yytext(), yytext(), yyline+1, yycolumn+1); }
-{DIGITO}+             { return new Token("ENTERO", yytext(), yyline+1, yycolumn+1); }
+{PALABRAS}            { 
+    String w = yytext();
+    return new Token(w, w, yyline+1, yycolumn+1);
+}
+{SIGNO}?{DIGITO}+     { return new Token("ENTERO", yytext(), yyline+1, yycolumn+1); }
 {ID}                  { return new Token("ID", yytext(), yyline+1, yycolumn+1); }
 {LITERAL}             { return new Token("LITERAL", yytext(), yyline+1, yycolumn+1); }
 "="                   { return new Token("IGUAL", yytext(), yyline+1, yycolumn+1); }
-"TRUE"                { return new Token("TRUE", "TRUE", yyline+1, yycolumn+1); }
-"FALSE"               { return new Token("FALSE", "FALSE", yyline+1, yycolumn+1); }
 {LETRA}+              { return new Token("LETRA", yytext(), yyline+1, yycolumn+1); }
 {COMENTARIO_LINEA}    { /* Ignorar */ }
 {COMENTARIO_BLOQUE}   { /* Ignorar */ }

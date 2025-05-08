@@ -11,6 +11,7 @@ public class Parser {
     private Lexer lexer;
     private BufferedWriter outputWriter;
     private boolean debugMode = true;
+    private boolean lastCondition;
 
     public Parser(Lexer lexer, String outputFile) throws IOException {
         this.lexer = lexer;
@@ -35,9 +36,16 @@ public class Parser {
             }
 
             //* Si el tope es un símbolo de fin de cadena, verificamos si el token actual es EOF
-            if (tope.equals("$")) {
+           /* if (tope.equals("$")) {
                 if (!tokenActual.tipo.equals("EOF")) {
                     throw new Error("Error: Entrada no consumida completamente");
+                }
+                break;
+            }*/
+
+            if(tope.equals("EOF")){
+                if(!tokenActual.tipo.equals("EOF")){
+                    throw new ErrorSintactico(tokenActual);
                 }
                 break;
             }
@@ -62,8 +70,12 @@ public class Parser {
     private void expandirNoTerminal(String noTerminal) throws Exception {
         switch (noTerminal) {
             case "PROGRAM":
-                pila.push("PROGRAM_END");
-                pila.push("STRUCT");
+                pila.push("EOF");
+                pila.push("MULTI_STRUCT");
+                break;
+
+            case "EXPR_END":
+                pila.push("ε");
                 break;
                 
             case "STRUCT":
@@ -72,6 +84,15 @@ public class Parser {
                 else if (tokenActual.lexema.equals("IF")) pila.push("CONDICIONAL_STRUCT");
                 else if (tokenActual.tipo.equals("ID")) pila.push("ASIGNACION_STRUCT");
                 else throw new ErrorSintactico(tokenActual);
+                break;
+
+            case "MULTI_STRUCT":
+                if(tokenActual.tipo.equals("EOF")) {
+                    pila.push("ε");
+                }else{
+                    pila.push("MULTI_STRUCT");
+                    pila.push("STRUCT");
+                }
                 break;
 
             // Estructura PRINT
@@ -93,6 +114,9 @@ public class Parser {
                         break;
                     case "ID":
                         String id = tokenActual.lexema.substring(1);
+                        if(!tablaSimbolos.containsKey(id)){
+                            throw new ErrorSintactico(tokenActual);
+                        }
                         escribirSalida(tablaSimbolos.get(id).toString());
                         pila.push("ID");
                         break;
@@ -130,31 +154,82 @@ public class Parser {
                 pila.push("IF");
                 break;
 
+            /*case "CONDICIONAL_BODY":
+                if(tokenActual.lexema.equals("PRINT")){
+                    pila.push("PRINT_STRUCT");
+                }else{
+                    pila.push("ε");
+                }
+                break;*/
+
             case "BOOL_VALUE":
-                if (tokenActual.lexema.equals("TRUE") || tokenActual.lexema.equals("FALSE")) {
-                    boolean activar = tokenActual.lexema.equals("TRUE");
-                    pila.push(activar ? "PRINT_STRUCT" : "ε");
-                    pila.push("PALABRA");
-                } else {
+                if(tokenActual.lexema.equals("TRUE") || tokenActual.lexema.equals("FALSE")){
+                    //* Se guarda el flag y se consume el token
+                    lastCondition = tokenActual.lexema.equals("TRUE");
+                    pila.push(tokenActual.tipo);
+                    tokenActual = obtenerSiguienteToken();
+
+                }else{
                     throw new ErrorSintactico(tokenActual);
                 }
                 break;
 
+            case "CONDICIONAL_BODY":
+                //* Solo hacemos push si la condicion es verdadera
+                if (lastCondition && tokenActual.lexema.equals("PRINT")) {
+                    pila.push("PRINT_STRUCT");
+                }else{
+                    pila.push("ε");
+                }
+                break;
+
+            /*case "BOOL_VALUE":
+                if (tokenActual.lexema.equals("TRUE") || tokenActual.lexema.equals("FALSE")) {
+                    boolean activar = tokenActual.lexema.equals("TRUE");
+                    pila.push(activar ? "PRINT_STRUCT" : "ε");
+                    //* Consumir el token
+                    tokenActual = obtenerSiguienteToken();
+                } else {
+                    throw new ErrorSintactico(tokenActual);
+                }
+                break; */
+
+
             // Estructura ASIGNACION
             case "ASIGNACION_STRUCT":
-                pila.push("END");
-                pila.push("EXPR");
-                pila.push("IGUAL");
+
+                //* Consumimos el token ID
                 String identificador = tokenActual.lexema.substring(1);
-                pila.push("ID");
-                tablaSimbolos.put(identificador, evaluarExpresion());
+                tokenActual = obtenerSiguienteToken(); // Consumir el ID
+
+                //* Consumir el token =
+                if (!tokenActual.tipo.equals("IGUAL")) {
+                    throw new ErrorSintactico(tokenActual);
+                }
+                tokenActual = obtenerSiguienteToken(); // Avanzar al siguiente token
+
+                //* Reestructurar la pila para manejar END despues de EXPR
+                //pila.push("END");
+                //pila.push("EXPR");
+
+                //* Evaluar la expresion y guardar en tabla de simbolos
+                int valor = evaluarExpresion();
+                //* Consumir el token END
+                if (!tokenActual.tipo.equals("END")) {
+                    throw new ErrorSintactico(tokenActual);
+                }
+                //* Actualizar la tabla de simbolos
+                tablaSimbolos.put(identificador, valor);
+
+                //* Configurar la pila para consumir END
+                pila.push("END");
                 break;
 
             // Manejo de expresiones
             case "EXPR":
                 pila.push("EXPR_END");
-                pila.push("TERM");
                 pila.push("EXPR'");
+                pila.push("TERM");
                 break;
 
             case "EXPR'":
@@ -171,8 +246,8 @@ public class Parser {
 
             case "TERM":
                 pila.push("TERM_END");
-                pila.push("FACTOR");
                 pila.push("TERM'");
+                pila.push("FACTOR");
                 break;
             case "TERM'":
                 if(tokenActual.tipo.equals("MULT") || tokenActual.tipo.equals("DIV") || tokenActual.tipo.equals("POT")){
@@ -188,9 +263,6 @@ public class Parser {
                 pila.push("ε");
                 break;
 
-            case "EXPR_END":
-                pila.push("ε");
-                break;
 
             case "FACTOR":
                 switch (tokenActual.tipo){
@@ -206,6 +278,10 @@ public class Parser {
                     default:
                         throw new ErrorSintactico(tokenActual);
                 }
+                break;
+
+            case "PROGRAM_END":
+                pila.push("ε");
                 break;
 
             case "OP_ADD":
@@ -233,9 +309,79 @@ public class Parser {
     }
 
     private int evaluarExpresion() throws Exception {
-        // Implementar evaluación completa de expresiones
-        // (Usar algoritmo Shunting-yard o similar)
-        return 0; // Temporal para compilación
+        Stack<Integer> valores = new Stack<>();
+        Stack<String> operadores = new Stack<>();
+
+        // Consumir tokens hasta encontrar "END"
+        while (!tokenActual.tipo.equals("END")) {
+            switch (tokenActual.tipo) {
+                case "ENTERO":
+                    valores.push(Integer.parseInt(tokenActual.lexema));
+                    tokenActual = obtenerSiguienteToken();
+                    break;
+                case "ID":
+                    String id = tokenActual.lexema.substring(1);
+                    if (!tablaSimbolos.containsKey(id)) {
+                        throw new Error("Identificador no definido: " + id);
+                    }
+                    valores.push(tablaSimbolos.get(id));
+                    tokenActual = obtenerSiguienteToken();
+                    break;
+                case "PAR_IZQ":
+                    operadores.push("(");
+                    tokenActual = obtenerSiguienteToken();
+                    break;
+                case "PAR_DER":
+                    while (!operadores.peek().equals("(")) {
+                        aplicarOperador(operadores.pop(), valores);
+                    }
+                    operadores.pop(); // Eliminar "("
+                    tokenActual = obtenerSiguienteToken();
+                    break;
+                case "SUMA":
+                case "RESTA":
+                case "MULT":
+                case "DIV":
+                case "POT":
+                    while (!operadores.isEmpty() && precedencia(operadores.peek()) >= precedencia(tokenActual.tipo)) {
+                        aplicarOperador(operadores.pop(), valores);
+                    }
+                    operadores.push(tokenActual.tipo);
+                    tokenActual = obtenerSiguienteToken();
+                    break;
+                default:
+                    throw new ErrorSintactico(tokenActual);
+            }
+        }
+
+        while (!operadores.isEmpty()) {
+            aplicarOperador(operadores.pop(), valores);
+        }
+
+        return valores.pop();
+    }
+
+    private int precedencia(String op) {
+        switch (op) {
+            case "POT": return 3;
+            case "MULT":
+            case "DIV": return 2;
+            case "SUMA":
+            case "RESTA": return 1;
+            default: return 0;
+        }
+    }
+
+    private void aplicarOperador(String op, Stack<Integer> valores) {
+        int b = valores.pop();
+        int a = valores.pop();
+        switch (op) {
+            case "SUMA": valores.push(a + b); break;
+            case "RESTA": valores.push(a - b); break;
+            case "MULT": valores.push(a * b); break;
+            case "DIV": valores.push(a / b); break;
+            case "POT": valores.push((int) Math.pow(a, b)); break;
+        }
     }
 
     private int obtenerValor(Lexer.Token token) {
@@ -252,7 +398,7 @@ public class Parser {
 
     private Lexer.Token obtenerSiguienteToken() throws Exception {
         Lexer.Token token = lexer.yylex();
-        if (token == null) token = new Lexer.Token("EOF", "", -1, -1);
+        if (token == null) token = new Lexer.Token("EOF", "EOF", -1, -1);
         return token;
     }
 
@@ -264,7 +410,8 @@ public class Parser {
                simbolo.equals("LITERAL") || simbolo.equals("IGUAL") ||
                 simbolo.equals("PAR_IZQ") || simbolo.equals("PAR_DER") ||
                 simbolo.equals("SUMA") || simbolo.equals("RESTA") || simbolo.equals("MULT") ||
-                simbolo.equals("DIV") || simbolo.equals("POT");
+                simbolo.equals("DIV") || simbolo.equals("POT") ||
+                simbolo.equals("TRUE") || simbolo.equals("FALSE");
     }
 
     private void logDebug(String mensaje) {
