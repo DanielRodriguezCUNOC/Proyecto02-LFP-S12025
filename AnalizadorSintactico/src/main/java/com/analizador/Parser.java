@@ -1,5 +1,7 @@
 package com.analizador;
 
+import com.analizador.archivos.ArchivoPrint;
+
 import java.io.*;
 import java.util.*;
 
@@ -9,13 +11,12 @@ public class Parser {
     private HashMap<String, Integer> tablaSimbolos = new HashMap<>();
     private Lexer.Token tokenActual;
     private Lexer lexer;
-    private BufferedWriter outputWriter;
     private boolean debugMode = true;
     private boolean lastCondition;
 
     public Parser(Lexer lexer, String outputFile) throws IOException {
         this.lexer = lexer;
-        this.outputWriter = new BufferedWriter(new FileWriter(outputFile));
+        ArchivoPrint.iniciar(outputFile);
         inicializarPila();
     }
 
@@ -35,14 +36,6 @@ public class Parser {
                 continue;
             }
 
-            //* Si el tope es un símbolo de fin de cadena, verificamos si el token actual es EOF
-           /* if (tope.equals("$")) {
-                if (!tokenActual.tipo.equals("EOF")) {
-                    throw new Error("Error: Entrada no consumida completamente");
-                }
-                break;
-            }*/
-
             if(tope.equals("EOF")){
                 if(!tokenActual.tipo.equals("EOF")){
                     throw new ErrorSintactico(tokenActual);
@@ -56,7 +49,7 @@ public class Parser {
                 expandirNoTerminal(tope);
             }
         }
-        outputWriter.close();
+        ArchivoPrint.cerrar();
     }
 
     private void manejarTerminal(String terminal) throws Exception {
@@ -105,21 +98,28 @@ public class Parser {
             case "PRINT_VALUE":
                 switch (tokenActual.tipo) {
                     case "LITERAL":
-                        escribirSalida(tokenActual.lexema.replace("\"", ""));
+                        ArchivoPrint.escribirLinea(tokenActual.lexema.replace("\"", ""), "LITERAL");
                         pila.push("LITERAL");
                         break;
                     case "ENTERO":
-                        escribirSalida(tokenActual.lexema);
+                        ArchivoPrint.escribirLinea(tokenActual.lexema, "NUMERO");
                         pila.push("ENTERO");
                         break;
                     case "ID":
                         String id = tokenActual.lexema.substring(1);
+                        int valor = tablaSimbolos.get(id);
                         if(!tablaSimbolos.containsKey(id)){
                             throw new ErrorSintactico(tokenActual);
                         }
-                        escribirSalida(tablaSimbolos.get(id).toString());
+                        ArchivoPrint.escribirLinea(String.valueOf(valor), "ID");
                         pila.push("ID");
                         break;
+
+                    case "LETRA":
+                        ArchivoPrint.escribirLinea(tokenActual.lexema, "LITERAL");
+                        tokenActual = obtenerSiguienteToken();
+                        break;
+
                     default:
                         throw new ErrorSintactico(tokenActual);
                 }
@@ -169,14 +169,6 @@ public class Parser {
                 pila.push("IF");
                 break;
 
-            /*case "CONDICIONAL_BODY":
-                if(tokenActual.lexema.equals("PRINT")){
-                    pila.push("PRINT_STRUCT");
-                }else{
-                    pila.push("ε");
-                }
-                break;*/
-
             case "BOOL_VALUE":
                 if(tokenActual.lexema.equals("TRUE") || tokenActual.lexema.equals("FALSE")){
                     //* Se guarda el flag y se consume el token
@@ -196,18 +188,6 @@ public class Parser {
                     pila.push("ε");
                 }
                 break;
-
-            /*case "BOOL_VALUE":
-                if (tokenActual.lexema.equals("TRUE") || tokenActual.lexema.equals("FALSE")) {
-                    boolean activar = tokenActual.lexema.equals("TRUE");
-                    pila.push(activar ? "PRINT_STRUCT" : "ε");
-                    //* Consumir el token
-                    tokenActual = obtenerSiguienteToken();
-                } else {
-                    throw new ErrorSintactico(tokenActual);
-                }
-                break; */
-
 
             // Estructura ASIGNACION
             case "ASIGNACION_STRUCT":
@@ -405,11 +385,6 @@ public class Parser {
         return Integer.parseInt(token.lexema);
     }
 
-    private void escribirSalida(String contenido) throws IOException {
-        outputWriter.write(contenido);
-        outputWriter.newLine();
-    }
-
     private Lexer.Token obtenerSiguienteToken() throws Exception {
         Lexer.Token token = lexer.yylex();
         if (token == null) token = new Lexer.Token("EOF", "EOF", -1, -1);
@@ -439,10 +414,4 @@ public class Parser {
         }
     }
 
-
-    private boolean esOperador(){
-        return tokenActual.lexema.equals("SUMA") || tokenActual.lexema.equals("RESTA") ||
-                tokenActual.lexema.equals("MULT") || tokenActual.lexema.equals("DIV") ||
-                tokenActual.lexema.equals("POT");
-    }
 }
