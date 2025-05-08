@@ -131,7 +131,9 @@ public class Editor extends JFrame {
     private void onAnalyze() {
         String input = editor.getText();
         if (input.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "El área de texto está vacía.", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this,
+                    "El área de texto está vacía.",
+                    "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
