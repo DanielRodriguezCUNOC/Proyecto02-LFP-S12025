@@ -9,30 +9,29 @@ public class Main {
         String input2 = "PRINT $miVariable END";       // Identificador
         String input3 = "PRINT -15 END";               // Entero con signo
         String input4 = "$x = 42 END";                  // Asignación simple
-        String input5 = "$total = (10 - 5) * 3 END";    // Expresión con paréntesis
+        String input5 = "$total = (10 + 5) * 3 END";    // Expresión con paréntesis
         String input6 = "IF TRUE THEN PRINT \"OK\" END END";
         String input7 = "IF FALSE THEN END";  // Sin cuerpo
         String input8 = "REPEAT 3 INIT PRINT \"Loop\" END END";  // Número fijo
-        String input9 = "REPEAT $veces INIT PRINT $contador END END";  // Con identificador
+        String input9 = "$veces = 2 END $contador = 5 END REPEAT $veces INIT PRINT $contador END END";  // Con identificador
         String input10 = """
     $a = 5 END
     $b = 10 END
-    PRINT $a + $b END
+    $resultado = $a + $b END
+    PRINT $resultado END
     IF TRUE THEN
-        REPEAT 2 INIT PRINT \"Anidado\" END END
+        PRINT \"Anidado\" END
     END
 """;
         String input11 = "$resultado = (2 ^ 4) * (10 / (5 - 3)) END";  // Potencia y división
-        String input12 = "$valor = $x * ($y + 3) - 100 / 2 ^ 2 END";   // Variables y precedencia
+        String input12 = "$x = 2 END $y = 10 END $valor = $x * ($y + 3) - 100 / 2 ^ 2 END";   // Variables y precedencia
         String input13 = """
     REPEAT 2 INIT
-        IF TRUE THEN
             PRINT \"Nivel 1\" END
+            END
             REPEAT 3 INIT
                 PRINT \"Nivel 2\" END
             END
-        END
-    END
 """;
         String input14 = "PRINT \"<div class='test'>#&%</div>\" END";  // HTML con símbolos
         String input15 = "PRINT \"Valor: \" + $x END";  // Concatenación implícita (depende de tu implementación)
@@ -42,7 +41,10 @@ public class Main {
     /* Comentario en bloque:
        Asignar exponente */
     $exp = 10 END
-    PRINT $base ^ $exp END  # Resultado: 1024
+    # Calcular potencia
+    $resultado = $base ^ $exp END  # Potencia
+    # Imprimir resultado
+    PRINT $resultado END  # Resultado: 1024
 """;
         String input17 = "PRINT 0 END";                  // Cero
         String input18 = "PRINT +2147483647 END";        // Máximo entero positivo (Java)
@@ -51,21 +53,22 @@ public class Main {
         String inputCompleto = """
     # Configuración inicial
     $iteraciones = 3 END
-    $mensaje = \"Ejecutando iteración\" END
+    $contador = 0 END
+    $mensaje = -345 END
     
     REPEAT $iteraciones INIT
-        PRINT $mensaje + \" \" + $contador END  # Asume que $contador existe
-        IF TRUE THEN
-            $contador = $contador + 1 END  # Incrementar
+        PRINT $mensaje END# Asume que $mensaje es una variable válida
         END
-    END
+        IF TRUE THEN
+            PRINT $contador END  # Incrementar
+        END
     
     /* Resultado final */
     PRINT \"Valor final: \" END
     PRINT $contador END
 """;
         try {
-            Lexer lexer = new Lexer(new StringReader(input6)); // Usar StringReader
+            Lexer lexer = new Lexer(new StringReader(inputCompleto)); // Usar StringReader
             Parser parser = new Parser(lexer, "salida.txt");
             parser.analizar();
             System.out.println("Análisis exitoso!");

@@ -128,21 +128,36 @@ public class Parser {
             // Estructura REPEAT
             case "REPEAT_STRUCT":
                 pila.push("REPEAT_END");
+                pila.push("BODY");
                 pila.push("INIT");
                 pila.push("REPEAT_COUNT");
                 pila.push("REPEAT");
                 break;
 
+            case "BODY":
+                if (tokenActual.lexema.equals("PRINT")) {
+                    pila.push("BODY");
+                    pila.push("PRINT_STRUCT");
+                } else {
+                    pila.push("ε");
+                }
+                break;
+
             case "REPEAT_COUNT":
                 if (tokenActual.tipo.equals("ENTERO") || tokenActual.tipo.equals("ID")) {
+                    //* Calculamos las repeticiones
                     int repeticiones = obtenerValor(tokenActual);
-                    pila.push(tokenActual.tipo);
-                    for (int i = 0; i < repeticiones; i++) {
-                        pila.push("PRINT_STRUCT");
-                    }
+                    //* Consumimos el token
+                    tokenActual = obtenerSiguienteToken();
+                    //* Cerramos con ε
+                    pila.push("ε");
                 } else {
                     throw new ErrorSintactico(tokenActual);
                 }
+                break;
+
+            case "REPEAT_END":
+                pila.push("END");
                 break;
 
             // Estructura CONDICIONAL
@@ -166,9 +181,8 @@ public class Parser {
                 if(tokenActual.lexema.equals("TRUE") || tokenActual.lexema.equals("FALSE")){
                     //* Se guarda el flag y se consume el token
                     lastCondition = tokenActual.lexema.equals("TRUE");
-                    pila.push(tokenActual.tipo);
                     tokenActual = obtenerSiguienteToken();
-
+                    pila.push("ε");
                 }else{
                     throw new ErrorSintactico(tokenActual);
                 }
