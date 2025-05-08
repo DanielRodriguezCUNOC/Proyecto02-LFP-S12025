@@ -5,8 +5,6 @@ import com.analizador.Parser;
 import com.analizador.reportes.TokenTable;
 
 import javax.swing.*;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 import javax.swing.undo.UndoManager;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
@@ -16,15 +14,13 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.ArrayList;
 import java.util.List;
 
 public class Editor extends JFrame {
     private final String PATH = "/home/luluwalilith/Documents/salida.txt";
-    private JTextArea textArea;
+    private EditorConNumerosDeLinea editor;
     private JButton analyzeButton;
     private JPanel mainPanel;
-    private JScrollPane scrollPane;
     private JMenuBar menuBar;
     private JMenu fileMenu;
     private JMenuItem openItem;
@@ -42,12 +38,12 @@ public class Editor extends JFrame {
     private boolean hasUnsavedChanges = false;
     private Font customFont = new Font("Monospaced", Font.BOLD, 18);
     private File currentFile = null;
+    private EditorConNumerosDeLinea editorConNumerosDeLinea;
 
     public Editor() {
         setTitle("IDE - Analizador Sintáctico");
         setSize(1000, 900);
         setLocationRelativeTo(null);
-        //setDefaultCloseOperation(EXIT_ON_CLOSE);
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
@@ -68,21 +64,18 @@ public class Editor extends JFrame {
         });
 
         mainPanel = new JPanel(new BorderLayout());
-        textArea = new JTextArea();
-        textArea.setFont(customFont);
+        editor = new EditorConNumerosDeLinea();
         analyzeButton = new JButton("Analizar");
         analyzeButton.setFont(customFont);
 
-        scrollPane = new JScrollPane(textArea);
-        mainPanel.add(scrollPane, BorderLayout.CENTER);
+        mainPanel.add(editor, BorderLayout.CENTER);
         mainPanel.add(analyzeButton, BorderLayout.SOUTH);
-
         add(mainPanel);
+
         createMenuBar();
-        setupTextAreaListener();
-        analyzeButton.addActionListener(e -> onAnalyze());
-        setupClipboardActions();
         setupUndoRedo();
+
+        analyzeButton.addActionListener(e -> onAnalyze());
     }
 
     private void createMenuBar() {
@@ -97,119 +90,102 @@ public class Editor extends JFrame {
         saveMenu.setFont(customFont);
         saveItem = new JMenuItem("Guardar");
         saveItem.setFont(customFont);
+        saveItem.addActionListener(e -> saveFile());
+
         saveAsItem = new JMenuItem("Guardar Como");
         saveAsItem.setFont(customFont);
+        saveAsItem.addActionListener(e -> saveAsFile());
 
         newMenu = new JMenu("Nuevo");
         newMenu.setFont(customFont);
         newItem = new JMenuItem("Nuevo Archivo");
         newItem.setFont(customFont);
+        newItem.addActionListener(e -> newFile());
 
         editMenu = new JMenu("Editar");
         editMenu.setFont(customFont);
         copyItem = new JMenuItem("Copiar");
         copyItem.setFont(customFont);
+        copyItem.addActionListener(e -> editor.copy());
+
         pasteItem = new JMenuItem("Pegar");
         pasteItem.setFont(customFont);
-        undoItem = new JMenuItem("Deshacer");
-        undoItem.setFont(customFont);
-        redoItem = new JMenuItem("Rehacer");
-        redoItem.setFont(customFont);
+        pasteItem.addActionListener(e -> editor.paste());
 
-        aboutItem = new JMenuItem("Acerca de");
-        aboutItem.setFont(customFont);
+        editMenu.add(copyItem);
+        editMenu.add(pasteItem);
 
-
-        saveItem.addActionListener(e -> saveFile());
-        saveAsItem.addActionListener(e -> saveAsFile());
-        newItem.addActionListener(e -> newFile());
-        aboutItem.addActionListener(e -> showAboutDialog());
-
+        fileMenu.add(openItem);
         saveMenu.add(saveItem);
         saveMenu.add(saveAsItem);
         newMenu.add(newItem);
-        editMenu.add(copyItem);
-        editMenu.add(pasteItem);
-        editMenu.add(undoItem);
-        editMenu.add(redoItem);
-        fileMenu.add(openItem);
-
 
         menuBar.add(fileMenu);
         menuBar.add(saveMenu);
         menuBar.add(newMenu);
         menuBar.add(editMenu);
-        menuBar.add(aboutItem);
         setJMenuBar(menuBar);
     }
 
-    private void setupClipboardActions() {
-        copyItem.addActionListener(e -> textArea.copy());
-        pasteItem.addActionListener(e -> textArea.paste());
+
+    private void onAnalyze() {
+        String input = editor.getText();
+        if (input.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "El área de texto está vacía.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        try {
+            // Crear el Lexer y Parser
+            Lexer lexer = new Lexer(new StringReader(input));
+            Parser parser = new Parser(lexer, "salida.txt");
+            parser.analizar(); // Realiza el análisis sintáctico
+
+            // Obtener los tokens recolectados
+            List<Lexer.Token> tokens = parser.getTokens();
+
+            // Mostrar la tabla de tokens
+            TokenTable tokenTable = new TokenTable(tokens);
+            tokenTable.setVisible(true);
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Análisis realizado correctamente.\nTokens encontrados: " + tokens.size(),
+                    "Éxito",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+
+        } catch (Exception ex) {
+            // Manejar errores mostrando los tokens recolectados hasta el error
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Error durante el análisis: " + ex.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE
+            );
+        }
     }
 
     private void openFile() {
-        // Verificar cambios no guardados antes de abrir un nuevo archivo
-        if (hasUnsavedChanges) {
-            int option = JOptionPane.showConfirmDialog(
-                    this,
-                    "¿Desea guardar los cambios antes de abrir otro archivo?",
-                    "Advertencia",
-                    JOptionPane.YES_NO_CANCEL_OPTION,
-                    JOptionPane.WARNING_MESSAGE
-            );
-
-            if (option == JOptionPane.YES_OPTION) {
-                saveFile(); // Guardar cambios actuales
-            } else if (option == JOptionPane.CANCEL_OPTION) {
-                return; // Cancelar la operación
-            }
-        }
-
-        // Mostrar diálogo para seleccionar archivo
         JFileChooser fileChooser = new JFileChooser();
         int result = fileChooser.showOpenDialog(this);
 
         if (result == JFileChooser.APPROVE_OPTION) {
+            File selectedFile = fileChooser.getSelectedFile();
             try {
-                File selectedFile = fileChooser.getSelectedFile();
-
-                // Leer contenido del archivo
                 String content = Files.readString(selectedFile.toPath(), StandardCharsets.UTF_8);
-
-                // Actualizar interfaz y estado
-                textArea.setText(content);
-                currentFile = selectedFile; // <-- Guardar referencia al archivo abierto
-                hasUnsavedChanges = false;   // <-- Reiniciar bandera
-
-            } catch (IOException ex) {
+                editorConNumerosDeLinea.setText(content);
+                currentFile = selectedFile;
+                hasUnsavedChanges = false;
+            } catch (IOException e) {
                 JOptionPane.showMessageDialog(
                         this,
-                        "Error al leer el archivo:\n" + ex.getMessage(),
-                        "Error de lectura",
+                        "Error al abrir el archivo: " + e.getMessage(),
+                        "Error",
                         JOptionPane.ERROR_MESSAGE
                 );
             }
         }
-    }
-
-    private void setupTextAreaListener() {
-        textArea.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                hasUnsavedChanges = true;
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                hasUnsavedChanges = true;
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                // No aplica para texto plano
-            }
-        });
     }
 
     private void saveFile() {
@@ -217,7 +193,7 @@ public class Editor extends JFrame {
             saveAsFile();
         } else {
             try {
-                Files.writeString(currentFile.toPath(), textArea.getText(), StandardCharsets.UTF_8);
+                Files.writeString(currentFile.toPath(), editor.getText(), StandardCharsets.UTF_8);
                 hasUnsavedChanges = false;
                 JOptionPane.showMessageDialog(this, "Archivo guardado exitosamente");
             } catch (IOException ex) {
@@ -237,79 +213,13 @@ public class Editor extends JFrame {
     }
 
     private void newFile() {
-        if (hasUnsavedChanges) {
-            int option = JOptionPane.showConfirmDialog(
-                    this,
-                    "¿Desea guardar los cambios?",
-                    "Cambios sin guardar",
-                    JOptionPane.YES_NO_CANCEL_OPTION
-            );
-
-            if (option == JOptionPane.YES_OPTION) saveFile();
-            else if (option == JOptionPane.CANCEL_OPTION) return;
-        }
-
-        textArea.setText("");
+        editor.setText("");
         currentFile = null;
         hasUnsavedChanges = false;
     }
 
-
     private void setupUndoRedo() {
         UndoManager undoManager = new UndoManager();
-        textArea.getDocument().addUndoableEditListener(e -> undoManager.addEdit(e.getEdit()));
-
-        undoItem.addActionListener(e -> {
-            if (undoManager.canUndo()) undoManager.undo();
-        });
-
-        redoItem.addActionListener(e -> {
-            if (undoManager.canRedo()) undoManager.redo();
-        });
+        editor.getDocument().addUndoableEditListener(e -> undoManager.addEdit(e.getEdit()));
     }
-
-    private void showAboutDialog() {
-        String info = "Desarrollado por:\n"
-                + "Pablo Daniel Alvarado Rodríguez\n"
-                + "Carné: 202130534\n"
-                + "Curso: Lenguajes Formales y de Programación";
-
-        JOptionPane.showMessageDialog(
-                this,
-                info,
-                "Acerca de",
-                JOptionPane.INFORMATION_MESSAGE
-        );
-    }
-
-    private void onAnalyze() {
-        String input = textArea.getText();
-        if (input.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "El área de texto está vacía.", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        try {
-            Lexer lexer = new Lexer(new StringReader(input));
-            List<Lexer.Token> tokens = new ArrayList<>();
-            Lexer.Token token;
-
-            while ((token = lexer.yylex()) != null) {
-                tokens.add(token);
-            }
-            Lexer lexerAnalyze = new Lexer(new StringReader(input));
-            Parser parser = new Parser(lexerAnalyze, PATH);
-            parser.analizar();
-
-            JOptionPane.showMessageDialog(this, "Análisis exitoso.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
-
-            TokenTable tokenTable = new TokenTable(tokens);
-            tokenTable.setVisible(true);
-
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Error durante el análisis: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
 }
-

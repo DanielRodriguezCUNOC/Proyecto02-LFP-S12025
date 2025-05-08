@@ -2,8 +2,11 @@ package com.analizador;
 
 import com.analizador.archivos.ArchivoPrint;
 
-import java.io.*;
-import java.util.*;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Stack;
 
 
 public class Parser {
@@ -13,6 +16,7 @@ public class Parser {
     private Lexer lexer;
     private boolean debugMode = true;
     private boolean lastCondition;
+    private List<Lexer.Token> tokens = new ArrayList<>();
 
     public Parser(Lexer lexer, String outputFile) throws IOException {
         this.lexer = lexer;
@@ -36,8 +40,8 @@ public class Parser {
                 continue;
             }
 
-            if(tope.equals("EOF")){
-                if(!tokenActual.tipo.equals("EOF")){
+            if (tope.equals("EOF")) {
+                if (!tokenActual.tipo.equals("EOF")) {
                     throw new ErrorSintactico(tokenActual);
                 }
                 break;
@@ -80,9 +84,9 @@ public class Parser {
                 break;
 
             case "MULTI_STRUCT":
-                if(tokenActual.tipo.equals("EOF")) {
+                if (tokenActual.tipo.equals("EOF")) {
                     pila.push("ε");
-                }else{
+                } else {
                     pila.push("MULTI_STRUCT");
                     pila.push("STRUCT");
                 }
@@ -108,7 +112,7 @@ public class Parser {
                     case "ID":
                         String id = tokenActual.lexema.substring(1);
                         int valor = tablaSimbolos.get(id);
-                        if(!tablaSimbolos.containsKey(id)){
+                        if (!tablaSimbolos.containsKey(id)) {
                             throw new ErrorSintactico(tokenActual);
                         }
                         ArchivoPrint.escribirLinea(String.valueOf(valor), "ID");
@@ -170,12 +174,12 @@ public class Parser {
                 break;
 
             case "BOOL_VALUE":
-                if(tokenActual.lexema.equals("TRUE") || tokenActual.lexema.equals("FALSE")){
+                if (tokenActual.lexema.equals("TRUE") || tokenActual.lexema.equals("FALSE")) {
                     //* Se guarda el flag y se consume el token
                     lastCondition = tokenActual.lexema.equals("TRUE");
                     tokenActual = obtenerSiguienteToken();
                     pila.push("ε");
-                }else{
+                } else {
                     throw new ErrorSintactico(tokenActual);
                 }
                 break;
@@ -184,7 +188,7 @@ public class Parser {
                 //* Solo hacemos push si la condicion es verdadera
                 if (lastCondition && tokenActual.lexema.equals("PRINT")) {
                     pila.push("PRINT_STRUCT");
-                }else{
+                } else {
                     pila.push("ε");
                 }
                 break;
@@ -236,7 +240,7 @@ public class Parser {
                 }
                 break;
 
-                //* Reglas para la expresión
+            //* Reglas para la expresión
 
             case "TERM":
                 pila.push("TERM_END");
@@ -244,11 +248,11 @@ public class Parser {
                 pila.push("FACTOR");
                 break;
             case "TERM'":
-                if(tokenActual.tipo.equals("MULT") || tokenActual.tipo.equals("DIV") || tokenActual.tipo.equals("POT")){
+                if (tokenActual.tipo.equals("MULT") || tokenActual.tipo.equals("DIV") || tokenActual.tipo.equals("POT")) {
                     pila.push("TERM'");
                     pila.push("FACTOR");
                     pila.push("OP_MUL");
-                }else{
+                } else {
                     pila.push("ε");
                 }
                 break;
@@ -259,12 +263,12 @@ public class Parser {
 
 
             case "FACTOR":
-                switch (tokenActual.tipo){
+                switch (tokenActual.tipo) {
                     case "ENTERO":
                     case "ID":
                         pila.push(tokenActual.tipo);
                         break;
-                    case"PAR_IZQ":
+                    case "PAR_IZQ":
                         pila.push("PAR_DER");
                         pila.push("EXPR");
                         pila.push("PAR_IZQ");
@@ -357,12 +361,16 @@ public class Parser {
 
     private int precedencia(String op) {
         switch (op) {
-            case "POT": return 3;
+            case "POT":
+                return 3;
             case "MULT":
-            case "DIV": return 2;
+            case "DIV":
+                return 2;
             case "SUMA":
-            case "RESTA": return 1;
-            default: return 0;
+            case "RESTA":
+                return 1;
+            default:
+                return 0;
         }
     }
 
@@ -370,11 +378,21 @@ public class Parser {
         int b = valores.pop();
         int a = valores.pop();
         switch (op) {
-            case "SUMA": valores.push(a + b); break;
-            case "RESTA": valores.push(a - b); break;
-            case "MULT": valores.push(a * b); break;
-            case "DIV": valores.push(a / b); break;
-            case "POT": valores.push((int) Math.pow(a, b)); break;
+            case "SUMA":
+                valores.push(a + b);
+                break;
+            case "RESTA":
+                valores.push(a - b);
+                break;
+            case "MULT":
+                valores.push(a * b);
+                break;
+            case "DIV":
+                valores.push(a / b);
+                break;
+            case "POT":
+                valores.push((int) Math.pow(a, b));
+                break;
         }
     }
 
@@ -388,15 +406,23 @@ public class Parser {
     private Lexer.Token obtenerSiguienteToken() throws Exception {
         Lexer.Token token = lexer.yylex();
         if (token == null) token = new Lexer.Token("EOF", "EOF", -1, -1);
+
+        if (!token.tipo.equals("EOF")) {
+            tokens.add(token);
+        }
         return token;
+    }
+
+    public List<Lexer.Token> getTokens() {
+        return this.tokens;
     }
 
     private boolean esTerminal(String simbolo) {
         return simbolo.equals("PRINT") || simbolo.equals("END") ||
-               simbolo.equals("REPEAT") || simbolo.equals("INIT") ||
-               simbolo.equals("IF") || simbolo.equals("THEN") ||
-               simbolo.equals("ID") || simbolo.equals("ENTERO") ||
-               simbolo.equals("LITERAL") || simbolo.equals("IGUAL") ||
+                simbolo.equals("REPEAT") || simbolo.equals("INIT") ||
+                simbolo.equals("IF") || simbolo.equals("THEN") ||
+                simbolo.equals("ID") || simbolo.equals("ENTERO") ||
+                simbolo.equals("LITERAL") || simbolo.equals("IGUAL") ||
                 simbolo.equals("PAR_IZQ") || simbolo.equals("PAR_DER") ||
                 simbolo.equals("SUMA") || simbolo.equals("RESTA") || simbolo.equals("MULT") ||
                 simbolo.equals("DIV") || simbolo.equals("POT") ||

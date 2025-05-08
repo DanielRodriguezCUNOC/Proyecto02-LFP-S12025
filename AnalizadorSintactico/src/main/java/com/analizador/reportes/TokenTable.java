@@ -41,5 +41,14 @@ public class TokenTable extends JFrame {
 
         JScrollPane scrollPane = new JScrollPane(table);
         add(scrollPane, BorderLayout.CENTER);
+
+        if (tokens.isEmpty()) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "No se encontraron tokens",
+                    "Advertencia",
+                    JOptionPane.WARNING_MESSAGE
+            );
+        }
     }
 }
