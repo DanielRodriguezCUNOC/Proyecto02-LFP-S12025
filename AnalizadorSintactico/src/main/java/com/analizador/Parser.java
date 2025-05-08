@@ -70,7 +70,7 @@ public class Parser {
             case "EXPR_END":
                 pila.push("ε");
                 break;
-                
+
             case "STRUCT":
                 if (tokenActual.lexema.equals("PRINT")) pila.push("PRINT_STRUCT");
                 else if (tokenActual.lexema.equals("REPEAT")) pila.push("REPEAT_STRUCT");
@@ -392,10 +392,10 @@ public class Parser {
     }
 
     private boolean esTerminal(String simbolo) {
-        return simbolo.equals("PRINT") || simbolo.equals("END") || 
-               simbolo.equals("REPEAT") || simbolo.equals("INIT") || 
-               simbolo.equals("IF") || simbolo.equals("THEN") || 
-               simbolo.equals("ID") || simbolo.equals("ENTERO") || 
+        return simbolo.equals("PRINT") || simbolo.equals("END") ||
+               simbolo.equals("REPEAT") || simbolo.equals("INIT") ||
+               simbolo.equals("IF") || simbolo.equals("THEN") ||
+               simbolo.equals("ID") || simbolo.equals("ENTERO") ||
                simbolo.equals("LITERAL") || simbolo.equals("IGUAL") ||
                 simbolo.equals("PAR_IZQ") || simbolo.equals("PAR_DER") ||
                 simbolo.equals("SUMA") || simbolo.equals("RESTA") || simbolo.equals("MULT") ||

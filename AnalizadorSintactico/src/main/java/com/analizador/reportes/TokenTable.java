@@ -13,7 +13,7 @@ public class TokenTable extends JFrame {
 
     public TokenTable(List<Lexer.Token> tokens) {
         setTitle("Reporte de Tokens");
-        setSize(500, 300);
+        setSize(1000, 800);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
@@ -23,7 +23,7 @@ public class TokenTable extends JFrame {
         table.setFillsViewportHeight(true);
         table.setRowHeight(25);
         table.setFont(new Font("SansSerif", Font.BOLD, 18));
-
+        table.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 18));
         for (Lexer.Token token : tokens) {
             String nombreToken = token.tipo;
             if (token.tipo.matches("PRINT|END|REPEAT|INIT|IF|TRUE|FALSE|THEN")) {
@@ -31,7 +31,7 @@ public class TokenTable extends JFrame {
             }
 
             Object[] rowData = {
-                    nombreToken,  // Nombre a mostrar
+                    nombreToken,
                     token.lexema,
                     token.fila,
                     token.columna
